@@ -145,18 +145,6 @@ class _AppShellState extends State<AppShell> {
                 ),
             ],
           ),
-          // 등록
-          IconButton(
-            icon: const Icon(Icons.add_box_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProductCreatePage(onCreate: _createProduct),
-                ),
-              );
-            },
-          ),
         ],
       ),
 
