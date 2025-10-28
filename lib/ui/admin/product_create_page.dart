@@ -13,13 +13,17 @@ class ProductCreatePage extends StatefulWidget {
 
 class _ProductCreatePageState extends State<ProductCreatePage> {
   final _formKey = GlobalKey<FormState>();
+
+  // 폼 컨트롤러
   final _title = TextEditingController();
   final _artist = TextEditingController();
   final _price = TextEditingController();
-  final _stock = TextEditingController();
+  final _stock = TextEditingController(text: '1');
   final _tags = TextEditingController();
-  final _imageUrl = TextEditingController();
   final _description = TextEditingController();
+
+  // 이미지 URL은 텍스트필드를 숨기고, '이미지 박스'를 통해 팝업에서만 입력
+  final _imageUrl = TextEditingController();
 
   @override
   void dispose() {
@@ -28,12 +32,29 @@ class _ProductCreatePageState extends State<ProductCreatePage> {
     _price.dispose();
     _stock.dispose();
     _tags.dispose();
-    _imageUrl.dispose();
     _description.dispose();
+    _imageUrl.dispose();
     super.dispose();
   }
 
+  Future<void> _editImageUrl() async {
+    final url = await showDialog<String>(
+      context: context,
+      builder: (_) => _ImageUrlDialog(initial: _imageUrl.text),
+    );
+    if (url != null) {
+      setState(() => _imageUrl.text = url.trim());
+    }
+  }
+
   void _submit() {
+    // 이미지 필수
+    if (_imageUrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이미지 URL을 입력하세요')));
+      return;
+    }
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final product = Product(
@@ -52,7 +73,7 @@ class _ProductCreatePageState extends State<ProductCreatePage> {
     );
 
     widget.onCreate(product);
-    Navigator.pop(context); // 등록 완료 후 뒤로가기
+    Navigator.pop(context); // 저장 후 목록으로
   }
 
   @override
@@ -68,43 +89,46 @@ class _ProductCreatePageState extends State<ProductCreatePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 이미지 미리보기
-              if (_imageUrl.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      _imageUrl.text,
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Center(child: Text('이미지 로드 실패')),
-                    ),
+              // 1) 이미지 큰 박스 (탭하면 URL 팝업)
+              GestureDetector(
+                onTap: _editImageUrl,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: _imageUrl.text.isEmpty
+                        ? Container(
+                            alignment: Alignment.center,
+                            color: cs.surfaceContainerHighest,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.image_outlined, size: 40),
+                                SizedBox(height: 8),
+                                Text('이미지 등록 (탭)'),
+                              ],
+                            ),
+                          )
+                        : Image.network(
+                            _imageUrl.text,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              alignment: Alignment.center,
+                              color: cs.surfaceContainerHighest,
+                              child: const Text('이미지를 불러올 수 없습니다'),
+                            ),
+                          ),
                   ),
                 ),
-              TextFormField(
-                controller: _imageUrl,
-                decoration: const InputDecoration(
-                  labelText: '이미지 URL',
-                  hintText: '예: https://picsum.photos/seed/album/600/400',
-                ),
-                onChanged: (_) => setState(() {}),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return '이미지 주소를 입력하세요';
-                  final uri = Uri.tryParse(v);
-                  if (uri == null || !uri.isAbsolute) return '유효한 URL을 입력하세요';
-                  return null;
-                },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
+              // 2) 기본 정보
               TextFormField(
                 controller: _title,
-                decoration: const InputDecoration(labelText: '상품명'),
+                decoration: const InputDecoration(labelText: '음반명'),
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? '상품명을 입력하세요' : null,
+                    v == null || v.trim().isEmpty ? '음반명을 입력하세요' : null,
               ),
               const SizedBox(height: 12),
 
@@ -115,21 +139,41 @@ class _ProductCreatePageState extends State<ProductCreatePage> {
               const SizedBox(height: 12),
 
               TextFormField(
-                controller: _price,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '가격'),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return '가격을 입력하세요';
-                  if (int.tryParse(v) == null) return '숫자만 입력하세요';
-                  return null;
-                },
+                controller: _description,
+                decoration: const InputDecoration(labelText: '상세 설명'),
+                maxLines: 3,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
-              TextFormField(
-                controller: _stock,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '재고 수량'),
+              // 3) 수량/금액
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _stock,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: '보유/등록 수량'),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return '수량을 입력하세요';
+                        if (int.tryParse(v) == null) return '숫자만 입력하세요';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _price,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: '금액'),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return '금액을 입력하세요';
+                        if (int.tryParse(v) == null) return '숫자만 입력하세요';
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
 
@@ -140,28 +184,123 @@ class _ProductCreatePageState extends State<ProductCreatePage> {
                   hintText: '예: jazz, vinyl, classic',
                 ),
               ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _description,
-                decoration: const InputDecoration(labelText: '설명'),
-                maxLines: 3,
-              ),
               const SizedBox(height: 24),
 
-              // 등록 버튼
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _submit,
-                  icon: const Icon(Icons.check),
-                  label: const Text('등록하기'),
-                ),
+              // 4) 하단 버튼 (취소 / 등록하기)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('취소'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _submit,
+                      icon: const Icon(Icons.check),
+                      label: const Text('등록하기'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 이미지 URL 입력용 다이얼로그
+class _ImageUrlDialog extends StatefulWidget {
+  const _ImageUrlDialog({required this.initial});
+  final String initial;
+
+  @override
+  State<_ImageUrlDialog> createState() => _ImageUrlDialogState();
+}
+
+class _ImageUrlDialogState extends State<_ImageUrlDialog> {
+  late final TextEditingController _ctrl;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final v = _ctrl.text.trim();
+    final uri = Uri.tryParse(v);
+    if (v.isEmpty || uri == null || !uri.isAbsolute) {
+      setState(() => _error = '유효한 이미지 URL을 입력하세요');
+      return;
+    }
+    Navigator.pop(context, v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final previewUrl = _ctrl.text.trim();
+
+    return AlertDialog(
+      title: const Text('이미지 URL 입력'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _ctrl,
+            decoration: InputDecoration(
+              hintText: 'https:// ...',
+              errorText: _error,
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  _ctrl.clear();
+                  setState(() => _error = null);
+                },
+              ),
+            ),
+            onChanged: (_) => setState(() => _error = null),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 12),
+          if (previewUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  previewUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    alignment: Alignment.center,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    child: const Text('미리보기 실패'),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('확인')),
+      ],
     );
   }
 }
