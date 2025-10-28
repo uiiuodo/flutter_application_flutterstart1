@@ -159,6 +159,18 @@ class _AppShellState extends State<AppShell> {
           showAppBar: false, // ⬅️ 상단바는 AppShell이 담당
         ),
       ),
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ProductCreatePage(onCreate: _createProduct),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }
