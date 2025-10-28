@@ -72,12 +72,6 @@ class _AppShellState extends State<AppShell> {
         builder: (_) => ProductDetailPage(
           product: p,
           onAddToCart: (qty) => _addToCart(p, qty: qty),
-          related: _products
-              .where(
-                (e) => e.id != p.id && e.tags.any((t) => p.tags.contains(t)),
-              )
-              .take(6)
-              .toList(),
         ),
       ),
     );

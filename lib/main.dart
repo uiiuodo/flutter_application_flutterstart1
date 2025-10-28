@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'ui/app_shell.dart';
 import 'ui/start/start_page.dart'; //
 
 void main() {
