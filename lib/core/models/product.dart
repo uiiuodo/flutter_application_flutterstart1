@@ -1,4 +1,3 @@
-
 class Product {
   final String id;
   final String title;
@@ -8,6 +7,8 @@ class Product {
   final int stock;
   final List<String> tags;
 
+  final String? description;
+
   const Product({
     required this.id,
     required this.title,
@@ -16,5 +17,6 @@ class Product {
     required this.imageUrl,
     required this.stock,
     this.tags = const [],
+    this.description,
   });
 }
